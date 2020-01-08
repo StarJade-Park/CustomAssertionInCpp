@@ -1,6 +1,6 @@
 # CustomAssertionInCpp
 
-직접 직접 만들어본 assert 매크로입니다.
+커스텀 assert 매크로입니다.
 윈도우 전용으로 작성했으며, 단순 출력과 팝업 출력 두 가지 assert가 있습니다.
 
 ```c++
