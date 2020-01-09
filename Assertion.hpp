@@ -1,94 +1,44 @@
-/******* Define assertion macros *******/
-#pragma once
-
 #include <intrin.h>
-#include <corecrt_terminate.h>
 #include <stdio.h>
-
-//#define POPUP_ASSERT_WINDOW // NOTE : If you use "popup assertion", enable it.
-
-#if defined(_DEBUG) && defined(POPUP_ASSERT_WINDOW)
 #include <Windows.h>
-#endif
 
-// Assert text printer class
+// Assert popup text class
 class GAssertion
 {
 public:
-	static void __cdecl PrintFailireMessage(wchar_t const* message, wchar_t const* file, unsigned line)
-	{
-		wprintf_s(L"Assertion failed!! %s\nFile : %s, Line : %d\n", message, file, line);
-	}
+    static void __cdecl PrintFailirePopupMessage(wchar_t const* message, wchar_t const* file, unsigned int line)
+    {
+        MessageBeep(MB_ICONSTOP);
 
-	static void __cdecl PrintUserMessage(wchar_t const* message)
-	{
-		wprintf_s(L"[LOG] %s\n", message);
-	}
+        wchar_t _message[256] = {};
+        swprintf_s(_message, L"Expression : %s\nFile : %s\nLine : %d\n", message, file, line);
 
-#if defined(_DEBUG) && defined(POPUP_ASSERT_WINDOW)
-	void __cdecl PrintFailirePopupMessage(wchar_t const* message, wchar_t const* file, unsigned line)
-	{
-		MessageBeep(MB_ICONSTOP);
+        wchar_t _programName[MAX_PATH + 1] = {};
+        GetModuleFileNameW(NULL, _programName, MAX_PATH);
 
-		wchar_t __message[256] = {};
-		swprintf_s(__message, L"Expression : %s\nFile : %s, Line : %d\n", message, file, line);
-
-		wchar_t programName[MAX_PATH + 1] = {};
-		GetModuleFileNameW(NULL, programName, MAX_PATH);
-
-		MessageBoxW(FindWindowW(programName, nullptr), __message, L"Assertion failed!!", MB_ICONERROR | MB_OK);
-	}
-#endif
+        switch ( MessageBoxW(FindWindowW(_programName, nullptr), _message, L"Assertion failed!!", MB_ICONERROR | MB_ABORTRETRYIGNORE) )
+        {
+        case IDABORT:
+        case IDIGNORE:
+            exit(IDABORT);
+        case IDRETRY:
+        default:
+            return;
+        }
+    }
 };
 
-#undef _BREAK
-#undef ASSERT
-#undef ASSERT_M
-#undef check
-#undef checkm
-
-
 // Assert macro define
-#ifdef NDEBUG
+#ifdef _DEBUG
 
+#define __BREAK() (__nop( ), __debugbreak( ))
+#define __MY_ASSERT_PRINT(expression) (GAssertion::PrintFailirePopupMessage(_CRT_WIDE(#expression), _CRT_WIDE(__FILE__), (unsigned)(__LINE__)), 0)
+#define MY_ASSERT(expression) (void)( (!!(expression)) || __MY_ASSERT_PRINT(expression) ); __BREAK( )
 
-#define _BREAK() abort()
-#define __ASSERT_PRINT(expression)
+#else // NDEBUG
 
-#define ASSERT(expression) __assume(expression)
-#define ASSERT_M(expression, Message) ASSERT(expression)
+#define __BREAK() exit(IDABORT)
+#define __MY_ASSERT_PRINT(expression) (void)(expression)
+#define MY_ASSERT(expression) __assume(expression) // not recoverable error
 
-#define check(expression) ASSERT(expression)
-#define checkm(expression, Message) ASSERT_M(expression, Message)
-
-
-#else // _DEBUG
-
-
-#define _BREAK() (__nop(), __debugbreak())
-#define __ASSERT_PRINT(expression) (GAssertion::PrintFailireMessage(_WIDE_STR(#expression), _WIDE_STR(__FILE__), (unsigned)(__LINE__)), 0)
-
-#define ASSERT(expression) (void)( (!!(expression)) || __ASSERT_PRINT(expression) ); _BREAK( )
-#define ASSERT_M(expression, Message) (void)(GAssertion::PrintUserMessage(_WIDE_STR(Message))); ASSERT(expression)
-
-#define check(expression) ASSERT(expression)
-#define checkm(expression, Message) ASSERT_M(expression, Message)
-
-#endif // NDEBUG
-
-// Popup assertion macro
-#ifdef POPUP_ASSERT_WINDOW
-
-#define __ASSERT_POPUP_PRINT(expression) (GAssertion::PrintFailirePopupMessage(_WIDE_STR(#expression), _WIDE_STR(__FILE__), (unsigned)(__LINE__)), 0)
-#define ASSERT_POPUP(expression) (void)( (!!(expression)) || __ASSERT_POPUP_PRINT(expression) ); _BREAK( )
-
-#else // !POPUP_ASSERT_WINDOW
-
-#define __ASSERT_POPUP_PRINT(expression) __ASSERT_PRINT(expression)
-#define ASSERT_POPUP(expression) ASSERT(expression)
-
-#endif // POPUP_ASSERT_WINDOW
-
-
-// Break point & print error log
-#define DEBUG_PRINT_ERROR(text, ...) printf_s("[ERR] File : %s, Line : %d\n[LOG] " text, __FILE__, __LINE__, __VA_ARGS__); _BREAK( ) 
+#endif // _DEBUG end
